@@ -1,0 +1,10 @@
+{
+    "servers": [
+        { "host": "aws", "port": 8082 , "allowedRequest" : []},
+        { "host": "aws2", "port": 8082 , "allowedRequest" : ["/products"]}
+    ],
+    "bkp": [
+        { "host": "webapp", "port": 3001,"allowedRequest" : []  },
+        { "host": "aws2", "port": 8082,"allowedRequest" : []  }
+    ]
+}
