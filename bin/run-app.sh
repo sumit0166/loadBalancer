@@ -3,6 +3,7 @@
 process_name="node"
 script_name="app.js"
 app_path=".."
+memory_limit=1024
 
 SartProcess (){
     if ! command -v "$process_name" &> /dev/null; then
@@ -35,17 +36,18 @@ SartProcess (){
     done
 
     cd "$app_path" || exit 1
-    "$process_name" "$script_name" 
+    "$process_name" "$script_name"
+    #"$process_name" --max-old-space-size="$memory_limit" --trace-gc "$script_name"
     # nohup "$process_name" "$script_name" > /dev/null 2>&1 &
     # "$process_name" "$script_name"
     echo "Process $script_name started."
 }
 
 
-if pgrep -f "$process_name $script_name" > /dev/null; then
+if pgrep -f "$process_name.*$script_name" > /dev/null; then
     echo "Process $script_name is already running."
     echo "Killing the process..."
-    pkill -f "$process_name $script_name"
+    pkill -f "$process_name.*$script_name"
     echo "Process $script_name killed."
     echo "Starting the new process..."
     SartProcess

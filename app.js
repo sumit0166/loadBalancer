@@ -1,29 +1,57 @@
 const http = require('http');
-const config = require('./config.json');
+const url = require('url');
+
+const config = require('./config/config.json');
+const logger = require('./components/logger');
+
 // List of backend servers
 const servers = config.servers;
 
 let currentIndex = 0; // Index to keep track of the current backend server
 
 // Create the load balancer server
-const balancer = http.createServer((req, res) => {
+function rotateServer() {
+    currentIndex = (currentIndex + 1) % servers.length;
+}
 
-    
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    // Allow the GET, POST, and OPTIONS methods
-    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE');
-    // Allow the Content-Type header
-    // res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-    
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+setInterval(rotateServer, config.switchnterval);
+let prevServer;
 
-    
+const reqBalance = (req) => {
     const currentServer = servers[currentIndex];
+    switch (config.balanceType) {
+        case "intervalBased":
+            return currentServer;
+        case "contextBased":
+            const parsedUrl = url.parse(req.url, true);
+            const context = parsedUrl.pathname.split('/')[1];
+            let defa;
+            try {
+                defa = servers.filter(server => server.allowedRequest.length === 0)
+            } catch (error) {
+                console.error(error);
+            }
+            // logger.info(`CONTEXT: ${context}`);
+            console.log(`CONTEXT: ${context}`);
+            for(let server of config.servers){ 
+                if (server.allowedRequest.includes(`/${context}`)) {
+                    // console.log(server)
+                    prevServer = server
+                    // logger.info(`${JSON.stringify(server)}`);
+                    return server;
+                } 
+            }
 
-    
-    
-    console.log(`Request URL: ${req.url}, Backend Server: ${currentServer.host}:${currentServer.port}`);
-    // Proxy the incoming request to the current backend server
+            let defaultServer = defa[Math.floor(Math.random() * defa.length)]
+            return defaultServer;
+        default:
+            return null;
+    }
+    // Rotate to the next backend server every 10 secondss
+}
+
+
+const handleTunneling = (req, res) => {
     const proxyReq = http.request({
         hostname: currentServer.host,
         port: currentServer.port,
@@ -32,7 +60,7 @@ const balancer = http.createServer((req, res) => {
         headers: req.headers
     }, (proxyRes) => {
         // Pipe the response from the backend server back to the client
-        
+        logger.info(`Response Received ${res.statusCode}`)
         proxyRes.pipe(res);
     });
 
@@ -42,22 +70,52 @@ const balancer = http.createServer((req, res) => {
     // rotateServer()
     // Handle errors from the backend server
     proxyReq.on('error', (err) => {
-        console.error('Error proxying request:', err);
+        logger.error('Error proxying request:', err);
         res.statusCode = 500;
         res.end('Internal Server Error');
     });
+}
+
+
+const balancer = http.createServer((req, res) => {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    // Allow the GET, POST, and OPTIONS methods
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE');
+    // Allow the Content-Type header
+    // res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
+    // logger.info(`**** Request Received URL: ${req.url}, Method: ${req.method},  origin - ${req.headers.origin}, connection - ${req.headers.connection}`);
+    const tunnelServer = reqBalance(req);
+
+    try {
+        // logger.info(` --> Backend Server: ${tunnelServer.host}:${tunnelServer.port}`)
+        console.log(`Backend: ${tunnelServer.host}:${tunnelServer.port}`)
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ opStatus: 5001, isSuccess: true }));
+        
+    } catch (error) {
+        logger.error(error);
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ status: 500, message: "Internal server error" }));
+    }
+    // handleTunneling(req,res);
+    // Proxy the incoming request to the current backend server
+
 });
 
 // Listen for incoming requests on port 8080
-balancer.listen(8081, () => {
-    console.log('Load balancer started on port 8081');
+balancer.listen(config.port, () => {
+    logger.info(`Load balancer started on port ${config.port}`);
+    logger.info(`Host URI: ${config.host}:${config.port}`);
+    logger.info(`Printing configuration bllow`)
+    logger.info(`Balancing Mehod - ${config.balanceType}`)
+    logger.info(`Rotate Interval in ms- ${config.switchnterval}`);
+    logger.info(`Avilable backend servers : ${JSON.stringify(config.servers, null, 2)}`);
 });
 
 // Rotate to the next backend server in a round-robin fashion
-function rotateServer() {
-    currentIndex = (currentIndex + 1) % servers.length;
-}
 
-// Rotate to the next backend server every 10 secondss
-setInterval(rotateServer, 500);
+
+
 

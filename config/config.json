@@ -1,10 +1,43 @@
 {
+    "port": 8081,
+    "host": "webapp",
+    "balanceType": "contextBased",
+    "switchnterval": 1000,
+    "logs" : {
+        "path": "logs/%DATE%.log",
+        "mode":"info",
+        "size": "20m",
+        "retantionPeriod": "5d"
+    },
     "servers": [
-        { "host": "aws", "port": 8082 , "allowedRequest" : []},
-        { "host": "aws2", "port": 8082 , "allowedRequest" : ["/products"]}
-    ],
-    "bkp": [
-        { "host": "webapp", "port": 3001,"allowedRequest" : []  },
-        { "host": "aws2", "port": 8082,"allowedRequest" : []  }
+        {
+            "host": "aws",
+            "port": 8082,
+            "allowedRequest": [
+                "/iam"
+            ]
+        },
+        {
+            "host": "aws2",
+            "port": 8082,
+            "allowedRequest": [
+                "/products"
+            ]
+        },
+        {
+            "host": "aws3",
+            "port": 8082,
+            "allowedRequest": []
+        },
+        {
+            "host": "aws4",
+            "port": 8082,
+            "allowedRequest": []
+        },
+        {
+            "host": "aws5",
+            "port": 8082,
+            "allowedRequest": []
+        }
     ]
 }
