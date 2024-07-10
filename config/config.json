@@ -1,7 +1,7 @@
 {
     "port": 8081,
     "host": "webapp",
-    "balanceType": "contextBased",
+    "balanceType": "ipHash",
     "switchnterval": 1000,
     "logs" : {
         "path": "logs/%DATE%.log",

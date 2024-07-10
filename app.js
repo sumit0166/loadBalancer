@@ -1,21 +1,26 @@
 const http = require('http');
 const url = require('url');
+const crypto = require('crypto');
 
 const config = require('./config/config.json');
 const logger = require('./components/logger');
 
 // List of backend servers
 const servers = config.servers;
-
+let prevServer;
 let currentIndex = 0; // Index to keep track of the current backend server
 
 // Create the load balancer server
-function rotateServer() {
-    currentIndex = (currentIndex + 1) % servers.length;
+// function rotateServer() {
+//     currentIndex = (currentIndex + 1) % servers.length;
+// }
+
+// setInterval(rotateServer, config.switchnterval);
+const convertIptoHash = (ip) => {
+    const hash = crypto.createHash('md5').update(ip).digest('hex');
+    return parseInt(hash, 16);
 }
 
-setInterval(rotateServer, config.switchnterval);
-let prevServer;
 
 const reqBalance = (req) => {
     const currentServer = servers[currentIndex];
@@ -24,9 +29,14 @@ const reqBalance = (req) => {
             if(currentIndex >= servers.length){
                 currentIndex = 0
             }
-            let tempServer = srevers[currentIndex]
+            let tempServer = servers[currentIndex]
             currentIndex++;
             return tempServer;
+        case "ipHash":
+            const ip = req.connection.remoteAddress || req.socket.remoteAddress;
+            const ipHash = convertIptoHash(ip);
+            const target = ipHash % servers.length
+            return servers[target];
         case "contextBased":
             const parsedUrl = url.parse(req.url, true);
             const context = parsedUrl.pathname.split('/')[1];
