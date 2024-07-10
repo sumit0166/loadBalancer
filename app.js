@@ -20,8 +20,13 @@ let prevServer;
 const reqBalance = (req) => {
     const currentServer = servers[currentIndex];
     switch (config.balanceType) {
-        case "intervalBased":
-            return currentServer;
+        case "roundRobin":
+            if(currentIndex >= servers.length){
+                currentIndex = 0
+            }
+            let tempServer = srevers[currentIndex]
+            currentIndex++;
+            return tempServer;
         case "contextBased":
             const parsedUrl = url.parse(req.url, true);
             const context = parsedUrl.pathname.split('/')[1];
@@ -45,7 +50,7 @@ const reqBalance = (req) => {
             let defaultServer = defa[Math.floor(Math.random() * defa.length)]
             return defaultServer;
         default:
-            return null;
+            return servers[Math.floor(Math.random() * servers.length)];
     }
     // Rotate to the next backend server every 10 secondss
 }
